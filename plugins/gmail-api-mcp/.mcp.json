@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gmail-api-mcp": {
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/start.sh"]
+    }
+  }
+}

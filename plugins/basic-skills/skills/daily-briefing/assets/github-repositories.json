@@ -1,0 +1,37 @@
+[
+  {
+    "scope": "modules",
+    "repositories": [
+      "https://github.com/Stratio/gosec-management-ui",
+      "https://github.com/Stratio/governance-ui",
+      "https://github.com/Stratio/governance-datamarket-ui",
+      "https://github.com/Stratio/keos-cluster-hub",
+      "https://github.com/Stratio/stratio-commons-ui",
+      "https://github.com/Stratio/cct-ui",
+      "https://github.com/Stratio/virtualizer-ui"
+    ]
+  },
+  {
+    "scope": "product-libraries",
+    "repositories": [
+      "https://github.com/Stratio/sds-themes",
+      "https://github.com/Stratio/sds-fonts",
+      "https://github.com/Stratio/st-form",
+      "https://github.com/Stratio/graphs"
+    ]
+  },
+  {
+    "scope": "egeo",
+    "repositories": [
+      "https://github.com/Stratio/egeo-common",
+      "https://github.com/Stratio/egeo-buttons",
+      "https://github.com/Stratio/egeo-navigation",
+      "https://github.com/Stratio/egeo-dropdowns",
+      "https://github.com/Stratio/egeo-modals",
+      "https://github.com/Stratio/egeo-global",
+      "https://github.com/Stratio/egeo-informative",
+      "https://github.com/Stratio/egeo-forms",
+      "https://github.com/Stratio/egeo-tables"
+    ]
+  }
+]

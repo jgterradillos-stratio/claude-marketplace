@@ -1,0 +1,32 @@
+{
+  "name": "jgterradillos-plugins",
+  "description": "Claude Code plugins",
+  "owner": {
+    "name": "Javier Garcia"
+  },
+  "plugins": [
+    {
+      "name": "artifact-tools",
+      "source": "./plugins/artifact-tools",
+      "description": "Query Stratio artifact releases, inspect versions across repos, and trigger Jenkins builds",
+      "version": "0.1.0",
+      "author": { "name": "Stratio" },
+      "category": "development",
+      "keywords": ["artifacts", "jenkins", "github", "releases", "versions", "builds"]
+    },
+    {
+      "name": "gmail-api-mcp",
+      "source": "./plugins/gmail-api-mcp",
+      "description": "Claude plugin for Gmail API integration — manage emails, labels, and threads directly from Claude.",
+      "version": "0.1.0",
+      "author": { "name": "Javier Garcia" },
+      "category": "productivity",
+      "keywords": ["gmail", "email", "imap", "smtp", "mail"]
+    },
+    {
+      "name": "basic-skills",
+      "source": "./plugins/basic-skills",
+      "description": "A plugin that provides basic skills"
+    }
+  ]
+}

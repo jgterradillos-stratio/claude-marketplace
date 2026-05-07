@@ -1,0 +1,9 @@
+{
+  "name": "basic-skills",
+  "version": "0.1.0",
+  "description": "A plugin that provides basic skills",
+  "author": {
+    "name": "Javier Garcia"
+  },
+  "keywords": ["skills", "basic"]
+}

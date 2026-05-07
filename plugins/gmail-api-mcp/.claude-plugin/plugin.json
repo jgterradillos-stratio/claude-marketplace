@@ -1,0 +1,15 @@
+{
+  "name": "gmail-api-mcp",
+  "version": "0.1.0",
+  "description": "Claude plugin for Gmail API integration — manage emails, labels, and threads directly from Claude.",
+  "mcp": {
+    "server": {
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/start.sh"]
+    },
+    "requiredEnv": [
+      "GMAIL_USER",
+      "GMAIL_APP_PASSWORD"
+    ]
+  }
+}

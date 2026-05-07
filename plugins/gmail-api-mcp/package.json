@@ -1,0 +1,24 @@
+{
+  "name": "gmail-mcp",
+  "version": "1.0.0",
+  "description": "Personal Gmail MCP server for sending and reading emails",
+  "type": "module",
+  "main": "dist/mcp/index.js",
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "watch": "tsc --watch",
+    "start": "node dist/mcp/index.js",
+    "dev": "tsx watch src/mcp/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "imapflow": "^1.0.0",
+    "nodemailer": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^6.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
