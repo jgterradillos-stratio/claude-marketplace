@@ -1,6 +1,6 @@
 {
   "name": "artifact-tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude plugin for Stratio product assistance — query artifact releases and trigger Jenkins builds.",
   "mcp": {
     "server": {
