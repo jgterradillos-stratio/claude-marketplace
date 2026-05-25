@@ -334,6 +334,59 @@ export function registerGithubTools(server) {
             lines.push(`\n**Other (${others.length}):** ${others.join(", ")}`);
         return { content: [{ type: "text", text: lines.join("\n") }] };
     });
+    server.registerTool("get_branch_pipeline_status", {
+        description: "Check whether a Jenkins pipeline is currently running for a specific branch of a Stratio artifact. Queries GitHub Check Runs for the branch HEAD commit and reports the status (queued, in_progress, or completed with conclusion) of each check run. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
+        inputSchema: {
+            artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
+            branch: z
+                .string()
+                .describe("Branch to check, e.g. 'master', 'main', or 'branch-1.4'"),
+        },
+    }, async ({ artifact, branch }) => {
+        const checkRunsUrl = `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/commits/${encodeURIComponent(branch)}/check-runs?per_page=100`;
+        const res = await fetch(checkRunsUrl, { headers: githubHeaders() });
+        if (res.status === 404) {
+            return {
+                content: [{ type: "text", text: `Artifact "${artifact}" or branch "${branch}" not found.` }],
+                isError: true,
+            };
+        }
+        if (!res.ok) {
+            return {
+                content: [{ type: "text", text: `GitHub API error: ${res.status} ${res.statusText}` }],
+                isError: true,
+            };
+        }
+        const data = (await res.json());
+        if (data.total_count === 0) {
+            return {
+                content: [{ type: "text", text: `No check runs found for "${artifact}" on branch "${branch}".` }],
+            };
+        }
+        const running = data.check_runs.filter((cr) => cr.status === "queued" || cr.status === "in_progress");
+        const completed = data.check_runs.filter((cr) => cr.status === "completed");
+        const header = `## Pipeline status: ${artifact} @ ${branch}\n`;
+        const summaryLine = running.length > 0
+            ? `**Active pipelines: ${running.length}** (${data.total_count} total check runs)`
+            : `All ${data.total_count} check run(s) completed — no active pipeline.`;
+        const formatRun = (cr) => {
+            const app = cr.app?.name ?? "unknown";
+            const statusLabel = cr.status === "completed"
+                ? `completed / ${cr.conclusion ?? "unknown"}`
+                : cr.status;
+            return `- [${cr.name}](${cr.html_url}) — ${statusLabel} (app: ${app})`;
+        };
+        const lines = [header, summaryLine];
+        if (running.length > 0) {
+            lines.push(`\n### Active`);
+            running.forEach((cr) => lines.push(formatRun(cr)));
+        }
+        if (completed.length > 0) {
+            lines.push(`\n### Completed (last ${Math.min(completed.length, 10)})`);
+            completed.slice(0, 10).forEach((cr) => lines.push(formatRun(cr)));
+        }
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    });
     server.registerTool("get_repo_activity", {
         description: "Get recent commits merged to the default branch (master/main) and all open pull requests for a list of Stratio GitHub repositories. Returns structured JSON with commits from the last N days and open PRs. Use this for daily briefings and activity summaries.",
         inputSchema: {
