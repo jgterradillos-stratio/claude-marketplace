@@ -39,7 +39,7 @@ Call `get_branch_pipeline_status` with artifact `"$ARGUMENTS"` and branch `"mast
 
 - If the tool returns an error indicating the branch or repo was not found (isError / 404), retry with branch `"main"`. Remember the resolved branch name for subsequent calls in this step.
 - If the tool returns an error for any other reason: **stop** and report it.
-- If any check run has status `queued` or `in_progress`: report "Active pipeline detected on master — waiting for it to finish..." and **poll every 60 seconds** (call `get_branch_pipeline_status` again after each wait) until all check runs reach a `completed` state.
+- If any check run has status `queued` or `in_progress`: report "Active pipeline detected on master — waiting for it to finish..." and **loop**: call `get_branch_pipeline_status` again immediately until all check runs reach a `completed` state.
   - If a check run completes with conclusion `failure`, `cancelled`, or `timed_out`: **stop** and report: "Pipeline on master failed before the release could start. Aborting."
   - After every 5 polling calls, report the current pipeline status so progress is visible.
   - Stop after 60 consecutive non-terminal results and ask the user whether to keep waiting.
