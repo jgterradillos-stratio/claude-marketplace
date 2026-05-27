@@ -59,10 +59,10 @@ Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"mast
 
 - If the tool returns an error indicating the branch or repo was not found (isError / 404), retry with branch `"main"`. Remember the resolved branch name for subsequent calls in this step.
 - If the tool returns an error for any other reason: **stop** and report it.
-- If any check run has status `queued` or `in_progress`: report "Active pipeline detected on master — waiting for it to finish..." and **loop**: call `get_branch_pipeline_status` again immediately until all check runs reach a `completed` state.
+- If any check run has status `queued` or `in_progress`: report "Active pipeline detected on master — waiting for it to finish..." and **loop**: use `ScheduleWakeup` with `delaySeconds=60`, then call `get_branch_pipeline_status` again. Do NOT poll in a tight loop.
   - If a check run completes with conclusion `failure`, `cancelled`, or `timed_out`: **stop** and report: "Pipeline on master failed before the release could start. Aborting."
-  - After every 5 polling calls, report the current pipeline status so progress is visible.
-  - Stop after 60 consecutive non-terminal results and ask the user whether to keep waiting.
+  - After every 5 polls, report the current pipeline status so progress is visible.
+  - Stop after 60 polls and ask the user whether to keep waiting.
 - If all check runs are `completed` or no check runs exist: proceed to Step 3.
 
 ---
@@ -95,9 +95,9 @@ Call `get_jenkins_build_status` with the URL from Step 3. Repeat until a termina
 
 Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"branch-X.Y"`.
 
-The branch may take a moment to register and for CI to be triggered. If no check runs are found yet (total_count = 0), call again immediately. Do this up to 20 times before concluding there is no CI to wait for.
+The branch may take a moment to register and for CI to be triggered. If no check runs are found yet (total_count = 0), use `ScheduleWakeup` with `delaySeconds=60` and retry. Do this up to 20 times before concluding there is no CI to wait for.
 
-Loop until all check runs are `completed`. After every 5 calls, report the current status. Stop after 60 consecutive non-terminal results and ask the user whether to keep waiting.
+**Loop** until all check runs are `completed`: use `ScheduleWakeup` with `delaySeconds=60` between each poll. Do NOT poll in a tight loop. After every 5 polls, report the current status. Stop after 60 polls and ask the user whether to keep waiting.
 
 - If a check run completes with conclusion `failure`, `cancelled`, or `timed_out`: **stop** and report the failure, asking the user whether to continue.
 
@@ -135,11 +135,11 @@ The prerelease build may push a new commit to `branch-X.Y`, changing the branch 
 Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"branch-X.Y"`.
 
 **Determine whether there is new CI to wait for:**
-- If no check runs found (total_count = 0): call again immediately. Retry up to 20 times. If still no runs, conclude no CI was triggered and proceed to Step 9.
-- If check runs exist and any are `queued` or `in_progress`: there is active CI — loop until all complete (same logic as Step 5).
-- If all check runs are `completed` on the first call: call **once more** to confirm this is not a timing artifact (the new CI may not have been registered yet). If the second call also shows all completed, proceed to Step 9.
+- If no check runs found (total_count = 0): use `ScheduleWakeup` with `delaySeconds=60` and retry. Do this up to 20 times before concluding no CI was triggered — proceed to Step 9.
+- If check runs exist and any are `queued` or `in_progress`: there is active CI — loop using `ScheduleWakeup` with `delaySeconds=60` between each poll (same logic as Step 5). Do NOT poll in a tight loop.
+- If all check runs are `completed` on the first call: wait 60s (`ScheduleWakeup`) and call **once more** to confirm this is not a timing artifact. If the second call also shows all completed, proceed to Step 9.
 
-After every 5 calls while looping, report progress. Stop after 60 consecutive non-terminal results and ask the user whether to keep waiting.
+After every 5 polls while looping, report progress. Stop after 60 polls and ask the user whether to keep waiting.
 
 - If any check run fails: **stop** and report, asking the user whether to continue.
 

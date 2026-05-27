@@ -431,7 +431,7 @@ export function registerGithubTools(server: McpServer) {
     "get_branch_pipeline_status",
     {
       description:
-        "Check whether a Jenkins pipeline is currently running for a specific branch of a Stratio artifact. Queries GitHub Check Runs for the branch HEAD commit and reports the status (queued, in_progress, or completed with conclusion) of each check run. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
+        "Check whether a CI pipeline is currently running for a specific branch of a Stratio artifact. Queries GitHub Check Runs for the branch HEAD commit and reports the status (queued, in_progress, or completed with conclusion) of each check run. If any check run is queued or in_progress, use ScheduleWakeup with delaySeconds=60 to poll again — do NOT call this tool in a tight loop. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
       inputSchema: {
         artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
         branch: z
@@ -516,7 +516,7 @@ export function registerGithubTools(server: McpServer) {
     "get_pr_pipeline_status",
     {
       description:
-        "Check the CI pipeline status for a Stratio GitHub pull request. Queries GitHub Check Runs for the PR's head commit SHA and reports the status (queued, in_progress, or completed with conclusion) of each check run. Use this instead of get_branch_pipeline_status when you have a PR number. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
+        "Check the CI pipeline status for a Stratio GitHub pull request. Queries GitHub Check Runs for the PR's head commit SHA and reports the status (queued, in_progress, or completed with conclusion) of each check run. Use this instead of get_branch_pipeline_status when you have a PR number. If any check run is queued or in_progress, use ScheduleWakeup with delaySeconds=60 to poll again — do NOT call this tool in a tight loop. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
       inputSchema: {
         artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
         pull_number: z.number().describe("Pull request number"),
