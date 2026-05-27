@@ -9,9 +9,28 @@ This skill orchestrates a full release-from-master flow for artifact "$ARGUMENTS
 
 ---
 
+## Step 0 — Parse arguments and resolve Jenkins subdirectory
+
+Parse `$ARGUMENTS`:
+- Split on the first space: **artifact** = first token, **subdirectory** = second token (if present).
+- Example: `my-repo SFE` → artifact=`my-repo`, subdirectory=`SFE`
+- Example: `my-repo` → artifact=`my-repo`, subdirectory=unknown
+
+If **subdirectory** is already known from the arguments: proceed to Step 1.
+
+If **subdirectory** is not provided:
+- Call `list_jenkins_subdirectories`.
+- Show the complete numbered list as plain text to the user exactly as returned by the tool.
+- Ask: "Which Jenkins subdirectory contains **<artifact>**? Reply with the name or number."
+- Wait for the user's reply and resolve the **subdirectory** from it (by name or by position in the list).
+
+Remember **subdirectory** — it will be passed to every `trigger_jenkins_build` call in this skill.
+
+---
+
 ## Step 1 — Get current snapshot version
 
-Call `get_artifact_versions` with artifact `"$ARGUMENTS"`.
+Call `get_artifact_versions` with artifact `"<artifact>"`.
 
 Extract the snapshot version (format: `X.Y.Z-SNAPSHOT`):
 - **major.minor** = `X.Y`
@@ -23,7 +42,8 @@ Extract the snapshot version (format: `X.Y.Z-SNAPSHOT`):
 
 Report to the user:
 ```
-Artifact:         $ARGUMENTS
+Artifact:         <artifact>
+Subdirectory:     <subdirectory>
 Snapshot:         X.Y.Z-SNAPSHOT
 Branch to create: branch-X.Y
 Master advances:  X.(Y+1).x-SNAPSHOT
@@ -35,7 +55,7 @@ Release:          X.Y.0
 
 ## Step 2 — Wait for any active pipeline on master/main to finish
 
-Call `get_branch_pipeline_status` with artifact `"$ARGUMENTS"` and branch `"master"`.
+Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"master"`.
 
 - If the tool returns an error indicating the branch or repo was not found (isError / 404), retry with branch `"main"`. Remember the resolved branch name for subsequent calls in this step.
 - If the tool returns an error for any other reason: **stop** and report it.
@@ -51,8 +71,9 @@ Call `get_branch_pipeline_status` with artifact `"$ARGUMENTS"` and branch `"mast
 
 Call `trigger_jenkins_build` with:
 - `type`: `"branch"`
-- `artifact`: `"$ARGUMENTS"`
+- `artifact`: `"<artifact>"`
 - `version`: `"X.Y#X.(Y+1)"` (e.g. `"1.5#1.6"`)
+- `subdirectory`: `"<subdirectory>"`
 
 Save the returned queue URL or build URL.
 
@@ -72,7 +93,7 @@ Call `get_jenkins_build_status` with the URL from Step 3. Repeat until a termina
 
 ## Step 5 — Wait for GitHub CI on branch-X.Y
 
-Call `get_branch_pipeline_status` with artifact `"$ARGUMENTS"` and branch `"branch-X.Y"`.
+Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"branch-X.Y"`.
 
 The branch may take a moment to register and for CI to be triggered. If no check runs are found yet (total_count = 0), call again immediately. Do this up to 20 times before concluding there is no CI to wait for.
 
@@ -88,8 +109,9 @@ Once all completed successfully: proceed to Step 6.
 
 Call `trigger_jenkins_build` with:
 - `type`: `"prerelease"`
-- `artifact`: `"$ARGUMENTS"`
+- `artifact`: `"<artifact>"`
 - `version`: `"X.Y.0-BUILD"` (e.g. `"1.5.0-BUILD"`)
+- `subdirectory`: `"<subdirectory>"`
 
 Save the returned queue URL or build URL.
 
@@ -110,7 +132,7 @@ Same polling logic as Step 4, using the URL from Step 6.
 
 The prerelease build may push a new commit to `branch-X.Y`, changing the branch HEAD and triggering a new CI run.
 
-Call `get_branch_pipeline_status` with artifact `"$ARGUMENTS"` and branch `"branch-X.Y"`.
+Call `get_branch_pipeline_status` with artifact `"<artifact>"` and branch `"branch-X.Y"`.
 
 **Determine whether there is new CI to wait for:**
 - If no check runs found (total_count = 0): call again immediately. Retry up to 20 times. If still no runs, conclude no CI was triggered and proceed to Step 9.
@@ -129,13 +151,14 @@ Once confirmed no active CI or all completed successfully: proceed to Step 9.
 
 Call `trigger_jenkins_build` with:
 - `type`: `"release"`
-- `artifact`: `"$ARGUMENTS"`
+- `artifact`: `"<artifact>"`
 - `version`: `"X.Y.0"` (e.g. `"1.5.0"`)
+- `subdirectory`: `"<subdirectory>"`
 
 Save the returned queue URL or build URL.
 
 Report: "Final release triggered (X.Y.0). Polling Jenkins..."
 
 Poll `get_jenkins_build_status` until terminal (same logic as Step 4):
-- `success`: report "Release X.Y.0 of $ARGUMENTS completed successfully."
+- `success`: report "Release X.Y.0 of <artifact> completed successfully."
 - `failure` / `aborted`: **stop** and report the error.

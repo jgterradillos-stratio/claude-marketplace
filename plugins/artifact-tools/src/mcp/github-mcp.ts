@@ -482,15 +482,17 @@ export function registerGithubTools(server: McpServer) {
       const completed = data.check_runs.filter((cr) => cr.status === "completed");
 
       const header = `## Pipeline status: ${artifact} @ ${branch}\n`;
-      const summaryLine = running.length > 0
-        ? `**Active pipelines: ${running.length}** (${data.total_count} total check runs)`
-        : `All ${data.total_count} check run(s) completed — no active pipeline.`;
+      const summaryLine =
+        running.length > 0
+          ? `**Active pipelines: ${running.length}** (${data.total_count} total check runs)`
+          : `All ${data.total_count} check run(s) completed — no active pipeline.`;
 
       const formatRun = (cr: (typeof data.check_runs)[0]) => {
         const app = cr.app?.name ?? "unknown";
-        const statusLabel = cr.status === "completed"
-          ? `completed / ${cr.conclusion ?? "unknown"}`
-          : cr.status;
+        const statusLabel =
+          cr.status === "completed"
+            ? `completed / ${cr.conclusion ?? "unknown"}`
+            : cr.status;
         return `- [${cr.name}](${cr.html_url}) — ${statusLabel} (app: ${app})`;
       };
 
@@ -509,6 +511,284 @@ export function registerGithubTools(server: McpServer) {
       return { content: [{ type: "text", text: lines.join("\n") }] };
     }
   );
+
+  server.registerTool(
+    "get_pr_pipeline_status",
+    {
+      description:
+        "Check the CI pipeline status for a Stratio GitHub pull request. Queries GitHub Check Runs for the PR's head commit SHA and reports the status (queued, in_progress, or completed with conclusion) of each check run. Use this instead of get_branch_pipeline_status when you have a PR number. Always reproduce the complete response verbatim in your reply — do not summarize or omit any field.",
+      inputSchema: {
+        artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
+        pull_number: z.number().describe("Pull request number"),
+      },
+    },
+    async ({ artifact, pull_number }) => {
+      const prRes = await fetch(
+        `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/pulls/${pull_number}`,
+        { headers: githubHeaders() }
+      );
+      if (prRes.status === 404) {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} not found in "${artifact}".` }],
+          isError: true,
+        };
+      }
+      if (!prRes.ok) {
+        return {
+          content: [{ type: "text", text: `GitHub API error fetching PR: ${prRes.status} ${prRes.statusText}` }],
+          isError: true,
+        };
+      }
+
+      const pr = (await prRes.json()) as { head: { sha: string; ref: string }; title: string };
+      const label = `PR #${pull_number} (${pr.head.ref}) — ${pr.title}`;
+
+      const checkRunsUrl = `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/commits/${pr.head.sha}/check-runs?per_page=100`;
+      const res = await fetch(checkRunsUrl, { headers: githubHeaders() });
+
+      if (res.status === 404) {
+        return {
+          content: [{ type: "text", text: `No check runs found for "${artifact}" PR #${pull_number}.` }],
+          isError: true,
+        };
+      }
+      if (!res.ok) {
+        return {
+          content: [{ type: "text", text: `GitHub API error: ${res.status} ${res.statusText}` }],
+          isError: true,
+        };
+      }
+
+      const data = (await res.json()) as {
+        total_count: number;
+        check_runs: Array<{
+          id: number;
+          name: string;
+          status: "queued" | "in_progress" | "completed";
+          conclusion: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          html_url: string;
+          app: { name: string } | null;
+        }>;
+      };
+
+      if (data.total_count === 0) {
+        return {
+          content: [{ type: "text", text: `No check runs found for "${artifact}" ${label}.` }],
+        };
+      }
+
+      const running = data.check_runs.filter(
+        (cr) => cr.status === "queued" || cr.status === "in_progress"
+      );
+      const completed = data.check_runs.filter((cr) => cr.status === "completed");
+
+      const header = `## Pipeline status: ${artifact} @ ${label}\n`;
+      const summaryLine =
+        running.length > 0
+          ? `**Active pipelines: ${running.length}** (${data.total_count} total check runs)`
+          : `All ${data.total_count} check run(s) completed — no active pipeline.`;
+
+      const formatRun = (cr: (typeof data.check_runs)[0]) => {
+        const app = cr.app?.name ?? "unknown";
+        const statusLabel =
+          cr.status === "completed"
+            ? `completed / ${cr.conclusion ?? "unknown"}`
+            : cr.status;
+        return `- [${cr.name}](${cr.html_url}) — ${statusLabel} (app: ${app})`;
+      };
+
+      const lines = [header, summaryLine];
+
+      if (running.length > 0) {
+        lines.push(`\n### Active`);
+        running.forEach((cr) => lines.push(formatRun(cr)));
+      }
+
+      if (completed.length > 0) {
+        lines.push(`\n### Completed (last ${Math.min(completed.length, 10)})`);
+        completed.slice(0, 10).forEach((cr) => lines.push(formatRun(cr)));
+      }
+
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    }
+  );
+  server.registerTool(
+    "get_pull_request_info",
+    {
+      description:
+        "Get information about a specific pull request in a Stratio GitHub repository: title, state, head branch, base branch, head SHA, author, draft status, and mergeable flag. Always reproduce the complete response verbatim in your reply.",
+      inputSchema: {
+        artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
+        pull_number: z.number().describe("Pull request number"),
+      },
+    },
+    async ({ artifact, pull_number }) => {
+      const res = await fetch(
+        `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/pulls/${pull_number}`,
+        { headers: githubHeaders() }
+      );
+
+      if (res.status === 404) {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} not found in "${artifact}".` }],
+          isError: true,
+        };
+      }
+      if (!res.ok) {
+        return {
+          content: [{ type: "text", text: `GitHub API error: ${res.status} ${res.statusText}` }],
+          isError: true,
+        };
+      }
+
+      const pr = (await res.json()) as {
+        number: number;
+        title: string;
+        state: string;
+        draft: boolean;
+        html_url: string;
+        user: { login: string };
+        head: { ref: string; sha: string };
+        base: { ref: string };
+        mergeable: boolean | null;
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `## PR #${pr.number}: ${pr.title}`,
+              `- State: ${pr.state}${pr.draft ? " (draft)" : ""}`,
+              `- Author: ${pr.user.login}`,
+              `- Head branch: ${pr.head.ref}`,
+              `- Head SHA: ${pr.head.sha}`,
+              `- Base branch: ${pr.base.ref}`,
+              `- Mergeable: ${pr.mergeable === null ? "unknown (still computing)" : pr.mergeable}`,
+              `- URL: ${pr.html_url}`,
+            ].join("\n"),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    "merge_pull_request",
+    {
+      description:
+        "Merge a Stratio GitHub pull request using squash merge, bypassing branch protection rules (requires admin token). Combines all commits into a single squash commit. Always reproduce the complete response verbatim in your reply.",
+      inputSchema: {
+        artifact: z.string().describe("Name of the Stratio artifact/repository on GitHub"),
+        pull_number: z.number().describe("Pull request number to merge"),
+        commit_title: z
+          .string()
+          .optional()
+          .describe("Title for the squash commit (defaults to the PR title if omitted)"),
+        commit_message: z
+          .string()
+          .optional()
+          .describe("Body of the squash commit message (optional)"),
+      },
+    },
+    async ({ artifact, pull_number, commit_title, commit_message }) => {
+      const prRes = await fetch(
+        `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/pulls/${pull_number}`,
+        { headers: githubHeaders() }
+      );
+
+      if (prRes.status === 404) {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} not found in "${artifact}".` }],
+          isError: true,
+        };
+      }
+      if (!prRes.ok) {
+        return {
+          content: [{ type: "text", text: `GitHub API error fetching PR: ${prRes.status} ${prRes.statusText}` }],
+          isError: true,
+        };
+      }
+
+      const pr = (await prRes.json()) as {
+        title: string;
+        number: number;
+        html_url: string;
+        state: string;
+        mergeable: boolean | null;
+      };
+
+      if (pr.state !== "open") {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} is not open (state: ${pr.state}).` }],
+          isError: true,
+        };
+      }
+
+      const mergeBody: Record<string, string> = {
+        merge_method: "squash",
+        commit_title: commit_title ?? pr.title,
+      };
+      if (commit_message) mergeBody.commit_message = commit_message;
+
+      const mergeRes = await fetch(
+        `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/pulls/${pull_number}/merge`,
+        {
+          method: "PUT",
+          headers: {
+            ...(githubHeaders() as Record<string, string>),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(mergeBody),
+        }
+      );
+
+      if (mergeRes.status === 405) {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} is not mergeable (already merged or has conflicts).` }],
+          isError: true,
+        };
+      }
+      if (mergeRes.status === 409) {
+        return {
+          content: [{ type: "text", text: `PR #${pull_number} has a merge conflict. Resolve it before merging.` }],
+          isError: true,
+        };
+      }
+      if (!mergeRes.ok) {
+        const errBody = (await mergeRes.json().catch(() => ({}))) as { message?: string };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `GitHub API error merging PR: ${mergeRes.status} ${mergeRes.statusText}${errBody.message ? ` — ${errBody.message}` : ""}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const result = (await mergeRes.json()) as { sha: string; merged: boolean; message: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `## PR #${pull_number} merged successfully`,
+              `- Repository: ${artifact}`,
+              `- PR: ${pr.html_url}`,
+              `- Merge commit: ${result.sha}`,
+              `- Method: squash merge (bypass rules)`,
+              `- Commit title: ${mergeBody.commit_title}`,
+            ].join("\n"),
+          },
+        ],
+      };
+    }
+  );
+
   server.registerTool(
     "get_repo_activity",
     {
