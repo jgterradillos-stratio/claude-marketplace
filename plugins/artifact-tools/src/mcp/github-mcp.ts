@@ -730,8 +730,8 @@ export function registerGithubTools(server: McpServer) {
       const mergeBody: Record<string, string> = {
         merge_method: "squash",
         commit_title: commit_title ?? pr.title,
+        commit_message: commit_message ?? "",
       };
-      if (commit_message) mergeBody.commit_message = commit_message;
 
       const mergeRes = await fetch(
         `${GITHUB_API}/repos/${STRATIO_ORG}/${artifact}/pulls/${pull_number}/merge`,

@@ -53,6 +53,14 @@ Milestones are recognized in both `x.y.z-M<n>` and `x.y.z-m.<n>` formats.
 
 Jenkins operations automatically notify in the chat when the build finishes (success or failure). On failure, the extracted error cause and a direct link to the build execution are shown.
 
+### Pull requests — merge and release
+
+| Operation | Example | Notes |
+|---|---|---|
+| Check PR CI status | Is the CI passing on PR #42 of `gosec-management-ui`? | Uses `get_pr_pipeline_status` |
+| Merge PR | Merge PR #42 of `gosec-management-ui` | Squash merge, bypasses branch protection. Requires admin token |
+| Get PR info | What is the head branch of PR #42 of `gosec-management-ui`? | Uses `get_pull_request_info` |
+
 ## Skills `/`
 
 | Skill | Usage | Description |
@@ -61,6 +69,8 @@ Jenkins operations automatically notify in the chat when the build finishes (suc
 | `/scope-versions <keyword>` | `/scope-versions gosec` | Table with release, snapshot and prerelease for all repos matching the keyword |
 | `/scope-versions SFE` | `/scope-versions SFE` | Same table for the predefined SFE scope |
 | `/artifacts-manager-examples` | `/artifacts-manager-examples` | Quick-reference guide of everything the plugin can do |
+| `/release-from-master <artifact> [subdirectory]` | `/release-from-master gosec-management-ui SFE` | Full release from master: create branch → wait CI → prerelease → wait CI → release. If subdirectory is omitted, asks at the start |
+| `/merge-pr-and-release-from-master <pr-url> [subdirectory]` | `/merge-pr-and-release-from-master https://github.com/Stratio/gosec-management-ui/pull/42 SFE` | Waits for all PR checks to pass, squash-merges the PR (bypassing rules), then runs the full release-from-master flow |
 
 ## Development
 
@@ -95,6 +105,10 @@ skills/
     assets/scopes/    ← predefined scope lists
   artifacts-manager-examples/
     SKILL.md
+  release-from-master/
+    SKILL.md
+  merge-pr-and-release-from-master/
+    SKILL.md
 .claude-plugin/
   plugin.json
 ```
@@ -107,6 +121,8 @@ Skills in `skills/` are only loaded by Claude Code when the plugin is installed 
 ln -s ../../skills/artifact-latest-versions .claude/skills/artifact-latest-versions
 ln -s ../../skills/scope-versions .claude/skills/scope-versions
 ln -s ../../skills/artifacts-manager-examples .claude/skills/artifacts-manager-examples
+ln -s ../../skills/release-from-master .claude/skills/release-from-master
+ln -s ../../skills/merge-pr-and-release-from-master .claude/skills/merge-pr-and-release-from-master
 ```
 
 Add `.claude/skills/` to `.gitignore` so the symlinks are not committed. Then run `/reload-plugins` in Claude Code to pick up the skill.

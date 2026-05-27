@@ -44,6 +44,9 @@ When any MCP tool returns a result, always reproduce the **complete response ver
 | `get_artifact_versions` | All versions of an artifact: snapshot, releases, milestones, prereleases, dev branch status |
 | `get_latest_release` | Latest version of a given type: `release`, `snapshot`, `milestone`, or `prerelease` |
 | `list_artifact_branches` | All branches of an artifact repo (main, maintenance `branch-x.y`, and others) |
+| `get_pull_request_info` | PR metadata: title, state, head/base branch, head SHA, author, draft status, mergeable flag |
+| `get_pr_pipeline_status` | CI check runs for a PR's head commit (by pull_number). Use instead of `get_branch_pipeline_status` when you have a PR number |
+| `merge_pull_request` | Squash-merge a PR bypassing branch protection rules. Requires admin token. Verifies PR is open before merging |
 
 ### Jenkins (`jenkins-mcp.ts`)
 
@@ -66,8 +69,14 @@ When any MCP tool returns a result, always reproduce the **complete response ver
 | `artifact-latest-versions` | All versions for an artifact: snapshot, releases, milestones, prereleases, dev branch |
 | `scope-versions` | Table with release, snapshot, and prerelease for all repos matching a keyword |
 | `artifacts-manager-examples` | Quick-reference guide of everything the plugin can do |
+| `release-from-master` | Full release-from-master flow: create branch, prerelease, release. Accepts `<artifact> [subdirectory]` — asks for Jenkins subdirectory at the start if not provided |
+| `merge-pr-and-release-from-master` | Waits for PR CI to pass (all checks green), squash-merges the PR bypassing rules, then runs the full release-from-master flow. Accepts `<pr-url> [subdirectory]` |
 
 Skills live in `skills/<name>/SKILL.md`. A symlink at `.claude/skills/` enables them during local development.
+
+### Jenkins subdirectory resolution
+
+Both `release-from-master` and `merge-pr-and-release-from-master` accept an optional subdirectory as a second argument (e.g. `/release-from-master my-repo SFE`). If omitted, the skill calls `list_jenkins_subdirectories` at the start, shows the list to the user, and waits for their reply before proceeding. The resolved subdirectory is then passed to every `trigger_jenkins_build` call in the flow.
 
 ## Adding New Tools
 
