@@ -32,16 +32,19 @@ Remember **subdirectory** — it will be passed to every `trigger_jenkins_build`
 
 ---
 
-## Step 1 — Wait for any active CI on the PR
+## Step 1 — Wait for CI and verify all checks pass
 
 Call `get_pr_pipeline_status` with artifact and pull_number.
 
 - If the tool returns a 404 or no check runs exist (total_count = 0): no CI to wait for — proceed to Step 2.
 - If any check run has status `queued` or `in_progress`: report "Active CI detected on PR #<pull_number> — waiting for it to finish..." and **loop**: call `get_pr_pipeline_status` again immediately until all check runs reach a `completed` state.
-  - If a check run completes with conclusion `failure`, `cancelled`, or `timed_out`: **stop** and report: "CI on PR #<pull_number> failed. Aborting merge."
   - After every 5 polling calls, report the current status so progress is visible.
   - Stop after 60 consecutive non-terminal results and ask the user whether to keep waiting.
-- If all check runs are `completed`: proceed to Step 2.
+- Once all check runs are `completed`, verify conclusions:
+  - Allowed conclusions (green): `success`, `skipped`, `neutral`.
+  - Blocking conclusions: `failure`, `timed_out`, `cancelled`, `action_required`, `stale`.
+  - If **any** check run has a blocking conclusion: **stop** and report which checks failed — do not proceed to merge.
+  - If all check runs have allowed conclusions: proceed to Step 2.
 
 ---
 

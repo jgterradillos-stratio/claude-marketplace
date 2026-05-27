@@ -745,25 +745,18 @@ export function registerGithubTools(server: McpServer) {
         }
       );
 
-      if (mergeRes.status === 405) {
-        return {
-          content: [{ type: "text", text: `PR #${pull_number} is not mergeable (already merged or has conflicts).` }],
-          isError: true,
-        };
-      }
-      if (mergeRes.status === 409) {
-        return {
-          content: [{ type: "text", text: `PR #${pull_number} has a merge conflict. Resolve it before merging.` }],
-          isError: true,
-        };
-      }
       if (!mergeRes.ok) {
         const errBody = (await mergeRes.json().catch(() => ({}))) as { message?: string };
+        const apiMessage = errBody.message ? ` — ${errBody.message}` : "";
+        let hint = "";
+        if (mergeRes.status === 403) hint = " (insufficient permissions — admin token required to bypass branch protection)";
+        if (mergeRes.status === 405) hint = " (squash merge may be disabled on this repo, or the PR is already merged)";
+        if (mergeRes.status === 409) hint = " (merge conflict or SHA mismatch — resolve conflicts before merging)";
         return {
           content: [
             {
               type: "text",
-              text: `GitHub API error merging PR: ${mergeRes.status} ${mergeRes.statusText}${errBody.message ? ` — ${errBody.message}` : ""}`,
+              text: `GitHub API error merging PR #${pull_number}: ${mergeRes.status} ${mergeRes.statusText}${apiMessage}${hint}`,
             },
           ],
           isError: true,
