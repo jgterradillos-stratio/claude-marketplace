@@ -16,7 +16,7 @@ project = KEY AND (created >= -Nd OR updated >= -Nd) ORDER BY updated DESC
 
 2. **My open issues** — issues assigned to the current user that are not done:
 ```
-project = KEY AND assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
+project = KEY AND assignee = "jgterradillos@stratio.com" AND statusCategory != Done ORDER BY updated DESC
 ```
 
 Replace `KEY` with the project key and `N` with the number of days.
