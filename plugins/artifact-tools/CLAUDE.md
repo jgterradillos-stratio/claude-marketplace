@@ -71,6 +71,7 @@ When any MCP tool returns a result, always reproduce the **complete response ver
 | `artifacts-manager-examples` | Quick-reference guide of everything the plugin can do |
 | `release-from-master` | Full release-from-master flow: create branch, prerelease, release. Accepts `<artifact> [subdirectory]` — asks for Jenkins subdirectory at the start if not provided |
 | `merge-pr-and-release-from-master` | Waits for PR CI to pass (all checks green), squash-merges the PR bypassing rules, then runs the full release-from-master flow. Accepts `<pr-url> [subdirectory]` |
+| `merge-pr` | Waits for PR CI to pass (all checks green), then squash-merges the PR bypassing rules. No release triggered. Accepts `<pr-url>` |
 
 Skills live in `skills/<name>/SKILL.md`. A symlink at `.claude/skills/` enables them during local development.
 

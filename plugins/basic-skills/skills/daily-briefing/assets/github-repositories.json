@@ -6,8 +6,8 @@
       "https://github.com/Stratio/governance-ui",
       "https://github.com/Stratio/governance-datamarket-ui",
       "https://github.com/Stratio/keos-cluster-hub",
+      "https://github.com/Stratio/keos-admin-console",
       "https://github.com/Stratio/stratio-commons-ui",
-      "https://github.com/Stratio/cct-ui",
       "https://github.com/Stratio/virtualizer-ui"
     ]
   },
