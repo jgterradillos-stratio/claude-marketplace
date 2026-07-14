@@ -27,6 +27,11 @@
       "name": "basic-skills",
       "source": "./plugins/basic-skills",
       "description": "A plugin that provides basic skills"
+    },
+    {
+      "name": "stratio-utils",
+      "source": "./plugins/stratio-utils",
+      "description": "A plugin that provides utilities for Stratio"
     }
   ]
 }
