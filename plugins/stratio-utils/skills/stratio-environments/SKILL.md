@@ -31,7 +31,8 @@ This streams every `.tgz` from the index (in parallel), reads only
 `cluster_versions.yaml` from each, and prints a Markdown report already
 grouped into the categories: Numericos, NATO, Griegas, Demo + NATO/Griego,
 Infra, Pit/Temp, Otros — each with a table of Entorno / Universe version /
-Keos version / Instalado.
+Keos version / Instalado / Ultima actualizacion (the tgz's "Last modified"
+date from the index, not a per-file network call).
 
 Report that output to the user largely as-is (light formatting cleanup only,
 do not drop rows or reorder groups). This step takes tens of seconds and
@@ -57,12 +58,14 @@ where `<short-name>` is the bare name without the `keos-workspace-` prefix
 
 This downloads that one environment's `.tgz` and streams out three files
 without ever writing them to disk: `cluster_versions.yaml`, `.kube/config`,
-and `keos.yaml`. It prints: universe/keos version and installed flag; cluster
-name, API server address, and kube context from `.kube/config`; the **full
-raw `.kube/config` content** (including its embedded certificate/key data) in
-a fenced code block, ready to paste into Lens or save as a kubeconfig file;
-and cluster ID, external domain, flavour, docker registry, helm repository,
-ssh user, and control-plane/node IPs from `keos.yaml`.
+and `keos.yaml`. It prints: the tgz's last-modified date (from the HTTP
+`Last-Modified` response header, no extra request needed); universe/keos
+version and installed flag; cluster name, API server address, and kube
+context from `.kube/config`; the **full raw `.kube/config` content**
+(including its embedded certificate/key data) in a fenced code block, ready
+to paste into Lens or save as a kubeconfig file; and cluster ID, external
+domain, flavour, docker registry, helm repository, ssh user, and
+control-plane/node IPs from `keos.yaml`.
 
 Report this output to the user verbatim, including the full raw kubeconfig
 block — do not truncate, summarize, or redact it. If the script errors with
@@ -82,11 +85,12 @@ Run:
 python3 <skill_dir>/scripts/stratio_environments.py names
 ```
 This only fetches the lightweight index page (a single HTTP request) and
-prints the short names that exist, grouped into Numericos, NATO, Griegas,
-Demo + NATO/Griego, Infra, Pit/Temp, Otros — no per-environment tgz download,
-no version info. Use this when the user just wants to see what environments
-exist (e.g. to then pick one for Step 3) without paying the cost of Step 2's
-full `list` (which downloads every .tgz).
+prints the short names that exist plus each one's last-modified date (parsed
+from the index's own "Last modified" column), grouped into Numericos, NATO,
+Griegas, Demo + NATO/Griego, Infra, Pit/Temp, Otros — no per-environment tgz
+download, no version info. Use this when the user just wants to see what
+environments exist (e.g. to then pick one for Step 3) without paying the
+cost of Step 2's full `list` (which downloads every .tgz).
 
 If the user instead asks "which group would `<name>` fall into" for an
 arbitrary/hypothetical name, run

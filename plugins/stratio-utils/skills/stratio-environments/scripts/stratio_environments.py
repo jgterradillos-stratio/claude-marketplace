@@ -23,6 +23,7 @@ import tarfile
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from email.utils import parsedate_to_datetime
 
 BASE_URL = os.environ.get("STRATIO_WORKSPACES_URL", "https://keos-workspaces.int.stratio.com").rstrip("/")
 PREFIX = "keos-workspace-"
@@ -84,22 +85,32 @@ def http_get(url, timeout):
     return urllib.request.urlopen(req, timeout=timeout)
 
 
-def list_environment_names():
+def list_environment_entries():
+    """Return {short_name: last_modified} parsed straight from the Apache
+    directory listing (the "Last modified" column) — a single cheap request,
+    no per-environment tgz download."""
     with http_get(BASE_URL + "/", LIST_TIMEOUT) as resp:
         html = resp.read().decode("utf-8", errors="replace")
-    names = sorted(set(re.findall(r'href="(?:\./)?' + re.escape(PREFIX) + r'([^"/]+)\.tgz"', html)))
-    return names
+    rows = re.findall(
+        r'href="(?:\./)?' + re.escape(PREFIX) + r'([^"/]+)\.tgz"[^<]*</a>\s*</td>\s*'
+        r'<td[^>]*>\s*([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9]{2}:[0-9]{2})',
+        html,
+    )
+    return dict(sorted(rows))
 
 
 def fetch_tar_members(short_name, wanted, timeout):
     """Stream keos-workspace-<short_name>.tgz and pull out `wanted` member suffixes.
 
-    Returns {suffix: bytes}. Raises on HTTP/tar errors.
+    Returns (members, last_modified) where members is {suffix: bytes} and
+    last_modified is the tgz's HTTP Last-Modified header (or None). Raises on
+    HTTP/tar errors.
     """
     url = f"{BASE_URL}/{PREFIX}{short_name}.tgz"
     found = {}
     remaining = set(wanted)
     with http_get(url, timeout) as resp:
+        last_modified = resp.headers.get("Last-Modified")
         with tarfile.open(fileobj=resp, mode="r|gz") as tar:
             for member in tar:
                 if not remaining:
@@ -110,7 +121,7 @@ def fetch_tar_members(short_name, wanted, timeout):
                     if extracted is not None:
                         found[match] = extracted.read()
                     remaining.discard(match)
-    return found
+    return found, last_modified
 
 
 def parse_cluster_versions(data):
@@ -195,10 +206,11 @@ def parse_keos_yaml(data):
 def cmd_list():
     print(f"Consultando indice: {BASE_URL}/\n", file=sys.stderr)
     try:
-        names = list_environment_names()
+        entries = list_environment_entries()
     except (urllib.error.URLError, urllib.error.HTTPError) as e:
         print(f"ERROR: no se pudo listar el indice de entornos: {e}", file=sys.stderr)
         return 1
+    names = sorted(entries)
 
     results = {}
     with ThreadPoolExecutor(max_workers=LIST_CONCURRENCY) as pool:
@@ -209,7 +221,7 @@ def cmd_list():
         for fut in as_completed(futures):
             n = futures[fut]
             try:
-                members = fut.result()
+                members, _ = fut.result()
                 results[n] = parse_cluster_versions(members["cluster_versions.yaml"]) if "cluster_versions.yaml" in members else {"error": "cluster_versions.yaml no encontrado en el tgz"}
             except Exception as e:
                 results[n] = {"error": str(e)}
@@ -224,23 +236,33 @@ def cmd_list():
         if not members:
             continue
         print(f"## {group} ({len(members)})\n")
-        print("| Entorno | Universe version | Keos version | Instalado |")
-        print("|---|---|---|---|")
+        print("| Entorno | Universe version | Keos version | Instalado | Ultima actualizacion |")
+        print("|---|---|---|---|---|")
         for m in members:
             info = results.get(m, {})
+            updated = entries.get(m, "?")
             if "error" in info:
-                print(f"| {m} | _error: {info['error']}_ | | |")
+                print(f"| {m} | _error: {info['error']}_ | | | {updated} |")
             else:
-                print(f"| {m} | {info['universeVersion']} | {info['keosVersion']} | {info['installed']} |")
+                print(f"| {m} | {info['universeVersion']} | {info['keosVersion']} | {info['installed']} | {updated} |")
         print()
     return 0
+
+
+def _format_last_modified(http_date):
+    if not http_date:
+        return "?"
+    try:
+        return parsedate_to_datetime(http_date).strftime("%Y-%m-%d %H:%M UTC")
+    except (TypeError, ValueError):
+        return http_date
 
 
 def cmd_detail(short_name):
     short_name = short_name.strip().lower().removeprefix(PREFIX)
     wanted = {"cluster_versions.yaml", ".kube/config", "keos.yaml"}
     try:
-        members = fetch_tar_members(short_name, wanted, DETAIL_TIMEOUT)
+        members, last_modified = fetch_tar_members(short_name, wanted, DETAIL_TIMEOUT)
     except urllib.error.HTTPError as e:
         print(f"ERROR: entorno '{short_name}' no encontrado ({e}). URL: {BASE_URL}/{PREFIX}{short_name}.tgz", file=sys.stderr)
         return 1
@@ -257,6 +279,7 @@ def cmd_detail(short_name):
     ky = parse_keos_yaml(members["keos.yaml"]) if "keos.yaml" in members else {}
 
     print(f"# Entorno: {short_name}\n")
+    print(f"- Ultima actualizacion (tgz): {_format_last_modified(last_modified)}\n")
     print("## Versiones (cluster_versions.yaml)")
     print(f"- Universe version: {cv.get('universeVersion', '?')}")
     print(f"- Keos version: {cv.get('keosVersion', '?')}")
@@ -296,10 +319,11 @@ def cmd_names(name=None):
 
     print(f"Consultando indice: {BASE_URL}/\n", file=sys.stderr)
     try:
-        names = list_environment_names()
+        entries = list_environment_entries()
     except (urllib.error.URLError, urllib.error.HTTPError) as e:
         print(f"ERROR: no se pudo listar el indice de entornos: {e}", file=sys.stderr)
         return 1
+    names = sorted(entries)
 
     groups = {}
     for n in names:
@@ -311,7 +335,7 @@ def cmd_names(name=None):
         if not members:
             continue
         print(f"## {group} ({len(members)})")
-        print(", ".join(members) + "\n")
+        print(", ".join(f"{m} ({entries[m]})" for m in members) + "\n")
     return 0
 
 

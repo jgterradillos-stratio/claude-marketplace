@@ -1,6 +1,6 @@
 {
   "name": "stratio-utils",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A plugin that provides utilities for Stratio",
   "author": {
     "name": "Javier Garcia"
