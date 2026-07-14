@@ -8,6 +8,7 @@ A Claude Code plugin marketplace. Each plugin packages skills and agents as slas
 |--------|---------|-------------|
 | [artifact-tools](./plugins/artifact-tools/) | 0.1.0 | Query Stratio artifact releases, inspect versions across repos, and trigger Jenkins builds |
 | [basic-skills](./plugins/basic-skills/) | 0.1.0 | General-purpose development skills and agents |
+| [stratio-utils](./plugins/stratio-utils/) | 0.1.1 | Stratio-specific utility skills (KEOS environments, etc.) |
 
 ---
 
@@ -55,6 +56,16 @@ MCP-backed plugin. Requires environment variables: `GITHUB_TOKEN`, `JENKINS_USER
 
 ---
 
+### stratio-utils
+
+**Skills (slash commands)**
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| stratio-environments | `/stratio-utils:stratio-environments` | Query KEOS workspace environments from the Stratio internal index — list all with versions, show full detail for one (versions, kube config, infra), or a cheap catalog of just the names/dates, all grouped by name pattern (Numericos, NATO, Griegas, Demo + NATO/Griego, Infra, Pit/Temp, Otros) |
+
+---
+
 ## Installation
 
 Add this marketplace to Claude Code:
@@ -68,6 +79,7 @@ Then install any plugin:
 ```bash
 claude plugin install artifact-tools@jgterradillos-plugins
 claude plugin install basic-skills@jgterradillos-plugins
+claude plugin install stratio-utils@jgterradillos-plugins
 ```
 
 ---
@@ -107,7 +119,8 @@ Launch Claude Code pointing to one or more plugin directories (`--plugin-dir` is
 claude --plugin-dir ./plugins/basic-skills
 claude --plugin-dir ./plugins/artifact-tools
 claude --plugin-dir ./plugins/gmail-api-mcp
-claude --plugin-dir ./plugins/basic-skills --plugin-dir ./plugins/artifact-tools --plugin-dir ./plugins/gmail-api-mcp
+claude --plugin-dir ./plugins/stratio-utils
+claude --plugin-dir ./plugins/basic-skills --plugin-dir ./plugins/artifact-tools --plugin-dir ./plugins/gmail-api-mcp --plugin-dir ./plugins/stratio-utils
 ```
 
 After making changes, reload without restarting:
@@ -124,6 +137,7 @@ Simulates the real installation experience from within Claude Code:
 /plugin marketplace add ./
 /plugin install artifact-tools@jgterradillos-plugins
 /plugin install basic-skills@jgterradillos-plugins
+/plugin install stratio-utils@jgterradillos-plugins
 ```
 
 ## Adding a new plugin
