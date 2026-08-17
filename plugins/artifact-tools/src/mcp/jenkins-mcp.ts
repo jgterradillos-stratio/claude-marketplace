@@ -247,7 +247,9 @@ AFTER triggering: if a queue_url is returned, use ScheduleWakeup with delaySecon
             isError: true,
           };
         }
-        nextVersion = type === "prerelease" ? `${version}-BUILD` : version;
+        nextVersion = type === "prerelease"
+          ? (version.endsWith("-BUILD") ? version : `${version}-BUILD`)
+          : version;
 
       } else {
         // milestone
